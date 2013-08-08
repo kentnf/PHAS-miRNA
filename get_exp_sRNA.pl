@@ -13,9 +13,9 @@ my $usage  = qq'
 usage: perl $0 list_uniq_read output_prefix 
 
 * the input of this script is the uniq read of small RNA (cleaned)
-  it mut have the expression of reads separated by \\t in ID.
+  it mut have the expression of reads separated by \'-\' in ID.
  
->IP31L_0000001	23814
+>IP31L_0000001-23814  	# 23814 is the number of read TTCCACAGCTTTCTTGAACTG
 TTCCACAGCTTTCTTGAACTG
 
 * this script will use a lot of memory depend on the number of input files
@@ -29,6 +29,7 @@ TTCCACAGCTTTCTTGAACTG
 my $list_uniq_read = shift || die $usage;
 my $output = shift || die $usage;
 
+my $count_cutoff = 10;
 my $norm_cutoff = 5;
 
 my $output1 = $output."_sRNA_expr";
@@ -58,7 +59,7 @@ foreach my $file (@list)
 	{
 		chomp;
 		my $id = $_;
-		my @a = split(/\t/, $id);
+		my @a = split(/-/, $id);
 		my $exp = $a[1];
 		my $seq = <$fu>; chomp($seq);
 		$uniq_read{$seq}{$file} = $exp;
@@ -89,7 +90,8 @@ print $out1 "\n";
 print $out3 "\n";
 
 my $seq_order = 0;
-my $length = length(sort(keys(%uniq_read)));
+
+my $length = length(scalar(keys(%uniq_read)));
 
 foreach my $seq (sort keys %uniq_read)
 {
@@ -106,7 +108,9 @@ foreach my $seq (sort keys %uniq_read)
 			$tpm = sprintf("%.2f", $tpm);
 			$line_tpm.="\t$tpm";
 
-			if ($tpm > $norm_cutoff){ $is_express = 1; }
+			$is_express = 1;
+			#if ($uniq_read{$seq}{$file} >= 50 ) { $is_express = 1; }
+			#if ($tpm > $norm_cutoff){ $is_express = 1; }
 		}
 		else
 		{
@@ -115,8 +119,10 @@ foreach my $seq (sort keys %uniq_read)
 		}
 	}
 
-	print $out1 $line."\n";
-	if ($is_express) { print $out3 $line_tpm."\n"; }
+	if ($is_express) { 
+		print $out1 $line."\n";
+		print $out3 $line_tpm."\n"; 
+	}
 
 	$seq_order++;
 	my $zlen = $length - length($seq_order);

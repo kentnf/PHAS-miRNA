@@ -4,16 +4,20 @@
 
  generate small RNA length distribution data and images
 
+ Yi Zheng
+
 =cut
 
 use strict;
 use warnings;
 use IO::File;
 
-
 my $usage = qq'
 perl $0 input_seq  seq_type (clean, uniq; default = clean)
 
+* clean: the seq ID does not have read number info
+* uniq: the seq ID has read number info
+* uniq seq ID: ID00001-29 (ID is ID00001, 29 is the count of reads)
 ';
 
 my $input_seq = shift || die $usage;
@@ -23,6 +27,7 @@ if ($seq_type eq "uniq" || $seq_type eq "clean") {} else { die "Error, seq type 
 my $key = $input_seq; $key =~ s/\..*$//;
 my $output_table = $key.".table";
 my $output_plots = $key.".pdf";
+my $output_image = $key.".png";
 
 #################################################################
 # Parse the sequence file and get length distribution 		#
@@ -110,4 +115,10 @@ END
 open R,"|/usr/bin/R --vanilla --slave" or die $!;
 print R $R_LD;
 close R;
+
+#################################################################
+# convert pdf file to png format				#
+#################################################################		
+my $cmd_convert = "convert $output_plots $output_image";
+system($cmd_convert) && die "Error in command: $cmd_convert\n";
 
