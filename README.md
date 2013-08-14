@@ -55,9 +55,7 @@ Finding miRNAStar sequences.
 	* now the old step 5-8 are combined except cut -f1,3,6,7 mir_star_output > miRNA_star,
    	because I do not see the real star result
 
-+-----------------------------------------------+
-+ the identification could be run step by step  +
-+-----------------------------------------------+
+* the identification could be run step by step
 
 1) Run miRNA identification pipeline.
 
@@ -79,19 +77,22 @@ Finding miRNAStar sequences.
 
 * hairpin is the file after pasing miRNA_sql_output and hairpin_sql using script hairpin_process.pl
 
-usage: perl miRNA_prediction.pl  [options]
 
-  -s|small-RNA          small RNA sequence (required)
-  -g|genome             genome sequnece & genome index created by bowtie-build (required)
-  -m|multi-hit          maximum of multiple hits for one small RNAs (default = 20)
-  -b|sql                generate miRNA sql file (default = off)
-  -t|target-predict     predict target from mRNA (default = off)
-  -u|mRNA               mRNA sequence (required if -t|target-predict is on)
-  -d|mRNA-index         mRNA index created by formatdb
-  -r|miRNA-star         predict miRNA star (default = off)
-  -e|sRNA-expr          expression of small RNA (required if -r|miRNA-star is on)
-  -o|output-prefix      the prefix of output file (default = output)
-  -h|?|help             print help info
+* usage for miRNA_prediction.pl
+
+	usage: perl miRNA_prediction.pl  [options]
+
+	  -s|small-RNA          small RNA sequence (required)
+	  -g|genome             genome sequnece & genome index created by bowtie-build (required)
+	  -m|multi-hit          maximum of multiple hits for one small RNAs (default = 20)
+	  -b|sql                generate miRNA sql file (default = off)
+	  -t|target-predict     predict target from mRNA (default = off)
+	  -u|mRNA               mRNA sequence (required if -t|target-predict is on)
+	  -d|mRNA-index         mRNA index created by formatdb
+	  -r|miRNA-star         predict miRNA star (default = off)
+	  -e|sRNA-expr          expression of small RNA (required if -r|miRNA-star is on)
+	  -o|output-prefix      the prefix of output file (default = output)
+	  -h|?|help             print help info
 
 * the input small RNA is : cleaned, uniq, remove rRNA and tRNA
 * genome is the genome fasta file, as well as index build by bowtie-build
