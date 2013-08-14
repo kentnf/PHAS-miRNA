@@ -1,4 +1,12 @@
 
+=================
+Identify pre-ta-siRNA using small RNA
+=================
+
+
+
+
+
 1. Remove adaptor sequences. (Shan's method)
 
 2. check small RNA length distribution
