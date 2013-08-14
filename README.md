@@ -80,8 +80,9 @@ Finding miRNAStar sequences.
 
 * usage for miRNA_prediction.pl
 
-	usage: perl miRNA_prediction.pl  [options]
-	-s|small-RNA          small RNA sequence (required)
+    usage: perl miRNA_prediction.pl  [options]
+
+   	  -s|small-RNA          small RNA sequence (required)
 
 	  -g|genome             genome sequnece & genome index created by bowtie-build (required)
 
