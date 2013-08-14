@@ -1,5 +1,15 @@
 #!/usr/bin/perl
 
+=head1 
+
+ phasing_iden.pl -- identify pahsing genes using small RNA datasets
+
+ Yi Zheng
+
+ 08/12/2012
+
+=cut
+
 use strict;
 use warnings;
 use PerlIO::gzip;
@@ -92,10 +102,17 @@ my ($sRNA_map_in_cycle, $sRNA_map_out_cycle, $sRNA_map_all, $reference_id) = loa
 # main: 							#
 #################################################################
 my $output_report = $output_prefix.".report.gz";
-my $report_pvalue;
+my $output_pvalue = $output_prefix."_pvalue.txt";
+my $output_4image = $output_prefix."_4image.txt";
 
 open(OPT, ">:gzip", $output_report) || die "Can not open output report file $output_report $!\n";
-print OPT "RefId\tstart\tend\tuniq mapped\tin cycle\tregister\tp-value\n";
+my $pva = IO::File->new(">".$output_pvalue) || die "Can not open output pvalue file $output_pvalue $!\n";
+my $img = IO::File->new(">".$output_4image) || die "Can not open output pvalue file $output_4image $!\n";
+
+print OPT  "#RefId\tstart\tend\tuniq mapped\tin cycle\tregister\tBshift\tp-value\n";
+print $pva "#RefId\tstart\tend\tuniq mapped\tin cycle\tregister\tBshift\tp-value\n";
+print $img "#cycle size: $cycle_size\n#window cycle: $window_cycle\n#shift cycle: $shift_cycle\n";
+print $img "#RefId\tstart\tend\tuniq mapped\tin cycle\tregister\tBshift\tp-value\n";
 
 my $in = Bio::SeqIO->new(-format=>'fasta', -file=>$ref_fa);
 while(my $inseq = $in->next_seq)
@@ -107,7 +124,8 @@ while(my $inseq = $in->next_seq)
 
 	my ($window_start, $window_end, 
 	    $num_out_cycle_read, $num_in_cycle_read, $num_uniq_read, 
-	    $num_register, $pvalue, $report);
+	    $num_register, $base_shift, $pvalue, $report, 
+	    $window_aligned_reads);
 
 	my %window_mapped;
 	for(my $i=1; $i<=$ref_len; $i=$i+$shift_size)
@@ -125,6 +143,7 @@ while(my $inseq = $in->next_seq)
 		my @potential_register_position;# position info of cycle reads for calculating register
 		
 		$report = 0;
+		$window_aligned_reads = "";
 		#%window_map = (); %window_map_cycle = ();
 		
 		# checking the report stat of window
@@ -135,27 +154,51 @@ while(my $inseq = $in->next_seq)
 			my $key_antisense = $ref_id.",".$aj.",-1";
 
 			if (defined $$sRNA_map_in_cycle{$key_sense} ) {
+				foreach my $ssid ( sort keys %{$$sRNA_map_in_cycle{$key_sense}} )
+				{
+					$window_aligned_reads.=$key_sense."\t".$ssid."\t".$$sRNA_map_in_cycle{$key_sense}{$ssid}."\n";
+				}
+				#print $window_aligned_reads; die;				
+
 				$num_in_cycle_read++;
 				push(@potential_register_position, $j);
 			}
 
 			if (defined $$sRNA_map_in_cycle{$key_antisense} ) {
+				foreach my $ssid ( sort keys %{$$sRNA_map_in_cycle{$key_antisense}} )
+				{
+					$window_aligned_reads.=$key_antisense."\t".$ssid."\t".$$sRNA_map_in_cycle{$key_antisense}{$ssid}."\n";
+				}
+				#print $window_aligned_reads; die;
+
 				$num_in_cycle_read++;
 				push(@potential_register_position, $j);
 			}	
 				
 			if (defined $$sRNA_map_out_cycle{$key_sense} ) {
+				foreach my $ssid ( sort keys %{$$sRNA_map_out_cycle{$key_sense}} )
+				{
+					$window_aligned_reads.=$key_sense."\t".$ssid."\t".$$sRNA_map_out_cycle{$key_sense}{$ssid}."\n";
+				}
+				#print $window_aligned_reads; die;
+
 				my $num_uniq = scalar(keys($$sRNA_map_out_cycle{$key_sense}));
 				$num_out_cycle_read = $num_out_cycle_read + $num_uniq;
 			}
 			if (defined $$sRNA_map_out_cycle{$key_antisense} ) {
+				foreach my $ssid ( sort keys %{$$sRNA_map_out_cycle{$key_antisense}} )
+				{
+					$window_aligned_reads.=$key_antisense."\t".$ssid."\t".$$sRNA_map_out_cycle{$key_antisense}{$ssid}."\n";
+				}
+				#print $window_aligned_reads; die;
+
 				my $num_uniq = scalar(keys($$sRNA_map_out_cycle{$key_antisense}));
 				$num_out_cycle_read = $num_out_cycle_read + $num_uniq;
 			}
 		}
 
 		$num_uniq_read = $num_out_cycle_read + $num_in_cycle_read;
-		$num_register = count_register(\@potential_register_position, $cycle_size);
+		($num_register, $base_shift) = count_register(\@potential_register_position, $cycle_size);
 		
 		$pvalue = "NA"; $report = 0;
 		if ($num_uniq_read >= 10 && $num_in_cycle_read/$num_uniq_read > 0.5 && $num_register >= 3)
@@ -165,23 +208,32 @@ while(my $inseq = $in->next_seq)
 			if ($pvalue < $cutoff_pvalue) { $report = 1; }
 		}
 
-		print OPT "$ref_id\t$window_start\t$window_end\t$num_uniq_read\t$num_in_cycle_read\t$num_register\t$pvalue\n";
+		print OPT "$ref_id\t$window_start\t$window_end\t$num_uniq_read\t$num_in_cycle_read\t$num_register\t$base_shift\t$pvalue\n";
 
 		if ($report == 1)
 		{
-			$report_pvalue.="$ref_id\t$window_start\t$window_end\t$num_in_cycle_read\t$num_out_cycle_read\t$num_register\t$pvalue\n";
+			my $window_report = "$ref_id\t$window_start\t$window_end\t$num_uniq_read\t$num_in_cycle_read\t$num_register\t$base_shift\t$pvalue";
+			print $pva $window_report."\n";
+			print $img $window_report."\n".$window_aligned_reads;
 		}
 	}
 }
 
 close(OPT);
+$pva->close;
+$img->close;
 
-# output ovalue
+# load info from file $outout_pvalue
+my $report_pvalue;
+my $rpva = IO::File->new($output_pvalue) || die "Can not open output pvalue file $output_pvalue $!\n";
+while(<$rpva>)
+{
+	chomp;
+	if ($_ =~ m/^#/) { next; }
+	$report_pvalue.=$_."\n";
+}
+$rpva->close;
 unless($report_pvalue) { exit; }
-my $output_pvalue = $output_prefix."_pvalue.txt";
-my $out = IO::File->new(">".$output_pvalue) || die "Can not open output pvalue file $output_pvalue $!\n";
-print $out $report_pvalue;
-$out->close;
 
 #################################################################
 # connect report pvalue region					#
@@ -374,13 +426,13 @@ sub count_register
 		else { $uu{$u} = 1; }
 	}
 
-	my $max_reg = 0;
+	my $max_reg = 0; my $base_shift = "NA";
 	foreach my $k (sort keys %uu)
 	{
-		if ($uu{$k} > $max_reg) { $max_reg = $uu{$k}; }
+		if ($uu{$k} > $max_reg) { $max_reg = $uu{$k}; $base_shift = $k; }
 	}
 
-	return $max_reg;
+	return ($max_reg, $base_shift);
 }
 
 =head1 
@@ -389,7 +441,7 @@ sub count_register
 sub connect_window
 {
 	my $report_pvalue = shift;
-	#"$ref_id\t$window_start\t$window_end\t$num_in_cycle_read\t$num_out_cycle_read\t$num_register\t$min_pvalue\n";
+	# "$ref_id\t$window_start\t$window_end\t$num_uniq_read\t$num_in_cycle_read\t$num_register\t$base_shift\t$pvalue\n";
 
 	my %region;
 
