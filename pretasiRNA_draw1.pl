@@ -17,7 +17,7 @@ use Bio::SeqIO;
 use IO::File;
 
 my $usage = qq'
-Perl $0  4image.txt  reference_sequence.fa 
+Perl $0  4image.txt  reference_sequence.fa  output_prefix 
 
 * 4image is the output of phasing_iden.pl
 
@@ -25,6 +25,7 @@ Perl $0  4image.txt  reference_sequence.fa
 
 my $mapping_4image = shift || die $usage;
 my $ref_seq = shift || die $usage;
+my $output_prefix = shift || die $usage;
 
 my $flanking_seq_len = 100;
 
@@ -141,7 +142,7 @@ foreach my $report (sort keys %$report_mapping)
 		else { $hithash{$key} = $val."\n"; };
 		#print "$key\n$val\n";
 	}
-	build_image($ref_id, $start, $end, $start_shift, $end_shift, $ref_seq, \%hithash);
+	build_image($ref_id, $start, $end, $start_shift, $end_shift, $ref_seq, \%hithash, $output_prefix);
 }
 
 #################################################################
@@ -241,13 +242,13 @@ sub get_cro
 sub build_image 
 { 
 	#my ($ref_id, $ref_seq,$sid) = @_;
-	my ($ref_id, $start, $end, $start_shift, $end_shift, $ref_seq, $hithash) = @_;
+	my ($ref_id, $start, $end, $start_shift, $end_shift, $ref_seq, $hithash, $output_prefix) = @_;
 
 	# defined the reference sequence length in window with flanking seq
 	my $ref_seq_len = length($ref_seq);
 
 	# define output file names
-	my $output_png_file  = $ref_id."-".$start."-".$end.".png";
+	my $output_png_file = $output_prefix."-".$ref_id."-".$start."-".$end.".png";
 
 	# split sequence to array
        	my @seq = split // => $ref_seq;

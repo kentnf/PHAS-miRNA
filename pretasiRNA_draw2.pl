@@ -15,12 +15,12 @@ use warnings;
 use IO::File;
 
 my $usage = qq'
-perl $0 4image.txt 
+perl $0 4image.txt output_prefix
 
 ';
 
 my $mapping_4image = shift || die $usage;
-
+my $output_prefix = shift || die $usage;
 
 #################################################################
 # load parameters						#
@@ -46,7 +46,7 @@ foreach my $report (sort keys %$report_mapping)
 	# outout pdf: ref_id-start-end.pdf 
 	# plot info: has number of lines equal to window size
 	# position \t plus_register \t plus_in_cycle \t minus_register \t minus_incycle \n
-	my ($output_pdf, $plot_info) = parse_line( $report, $mapping_info, $cycle_size);
+	my ($output_pdf, $plot_info) = parse_line( $report, $mapping_info, $cycle_size, $output_prefix);
 
 	# plot the image for only in cycle and register sRNA
 	plot_it($output_pdf, $plot_info);
@@ -126,7 +126,7 @@ sub mapping_to_hash
 =cut
 sub parse_line
 {
-	my ($report_info, $mapping_info, $cycle_size) = @_;
+	my ($report_info, $mapping_info, $cycle_size, $output_prefix) = @_;
 	chomp($report_info);
 	chomp($mapping_info);
 	my @report = split(/\t/, $report_info);
@@ -134,7 +134,7 @@ sub parse_line
 	my ($ref_id, $start, $end, $uniq_mapped, $in_cycle, $register_num, $base_shift, $pvalue) = @report;
 	my @line = split(/\n/, $mapping_info);
 
-	my $output_pdf = $ref_id."-".$start."-".$end.".pdf";
+	my $output_pdf = $output_prefix."-".$ref_id."-".$start."-".$end.".pdf";
 	my %position_plus_in_cycle;
 	my %position_plus_register;
 	my %position_minus_in_cycle;
@@ -235,7 +235,7 @@ plot(minusn, col="green", type="h", ylim=y_range, main="$name", xlab="Position",
 lines(minusk, col="blue", type="h")
 lines(plusn, col="orange", type="h")
 lines(plusk, col="red", type="h")
-#dev.off()
+invisible(dev.off())
 END
 
 	open R,"|/usr/bin/R --vanilla --slave" or die $!;

@@ -1,6 +1,5 @@
 #!/usr/bin/env perl
 
-
 # ==========================================================================
 # smRNAtarget_Pred.pl: small RNA target prediction tool.
 #
@@ -11,12 +10,16 @@
 #
 # ==========================================================================
 
+#use strict;
+#use warnings;
+use Bio::SeqIO;
+use FindBin;
 
 ###########################################################
 # Configuration section
 
 # The path of BLAST tool
-$BLAST_PATH = "/usr/local/bin";
+my $BLAST_BIN = ${FindBin::RealBin}."/blastall";
 
 # The path of database files 
 # 	- Save BLAST formatted database files of mRNAs and small RNAs 
@@ -29,16 +32,16 @@ $DATA_PATH = "./";
 $TEMP_PATH = "./";
 
 # Default cutoff of target score ( score range: 0 < score < 10 )
-$sc_cutoff = 3; 
+my $sc_cutoff = 3; 
 
 # Cutoff value of alignment by dynamic programming
-$max_score_cutoff = 8; 
+my $max_score_cutoff = 8; 
 
 # Type of query sequence (smRNA: 0, mRNA: 1)
-$seq_type = 0; 
+my $seq_type = 0; 
 
 # Direction of mRNA sequence (forward, reverse, both)
-$choice_direction = "forward";
+my $choice_direction = "forward";
 
 ###########################################################
 my @sel_list_disc = ();
@@ -66,6 +69,7 @@ $tempb = $TEMP_PATH."/"."blast.tmp";
 =cut
 sub insert_seq ($) {
 	my $fn = $_[0];
+	print $fn."\n";
 	open(INFILE, $fn) or die("Failed to read in $fn");
 
 	my $seq_hash = {};
@@ -484,12 +488,11 @@ sub blast_input_save (@) {
 sub blast_run (@) {
 	my ($blastdb, $queryfile, $direction) = @_;	
 
-	my $blastdbname = $DATA_PATH."/".$blastdb;
+	my $blastdbname = $blastdb;
 	
-	my $blast_out = `$BLAST_PATH/blastall -p blastn -d $blastdbname -i $queryfile -W 7 -q -1 -S $direction -e 100 -m 8`;
-
-	#my $blast_out = `$BLAST_PATH/blastall -p blastn -d $blastdbname -i $queryfile -W 7 -q -1 -S $direction -e 200 -m 8`;
-	
+	my $blast_out = `$BLAST_BIN -p blastn -d $blastdbname -i $queryfile -W 7 -q -1 -S $direction -e 100 -m 8`;
+	#my $blast_out = `$BLAST_BIN -p blastn -d $blastdbname -i $queryfile -W 7 -q -1 -S $direction -e 200 -m 8`;
+	#print "$BLAST_BIN -p blastn -d $blastdbname -i $queryfile -W 7 -q -1 -S $direction -e 100 -m 8";
 	return $blast_out;
 }
 
@@ -665,7 +668,7 @@ sub filter_output_result
 sub run_target_score
 {
 
-	$USAGE = qq'
+	my $USAGE = qq'
 Usage: perl $0 miRNA_seq_fasta blast_formatted_db source_db output
 
 * miRNA_seq_fasta -- miRNA sequence file identified by miRNA_prediction.pl
@@ -679,8 +682,8 @@ Usage: perl $0 miRNA_seq_fasta blast_formatted_db source_db output
     		exit;
 	}
 	
-	my $out_file = "./".$ARGV[3];
-	open OUTFILE, ">$out_file" || die("Cannot Open File");;
+	my $out_file = $ARGV[3];
+	open OUTFILE, ">$out_file" || die "Cannot Open File $!";
 	close OUTFILE;
 		
 	my $source_file = "";
@@ -689,13 +692,13 @@ Usage: perl $0 miRNA_seq_fasta blast_formatted_db source_db output
 	
 	if ($seq_type eq 1) 
 	{ 
-		$source_file = $DATA_PATH."/".$source_file_name; 
+		$source_file = $source_file_name; 
 		$blastdb_smRNA = $db_name;  #  Tomato smRNA
 		
 	}
 	else 
 	{ 
-		$source_file = $DATA_PATH."/".$source_file_name;
+		$source_file = $source_file_name;
 		$blastdb_mRNA = $db_name;  #  Tomato unigene file
 	}
 
@@ -721,7 +724,6 @@ Usage: perl $0 miRNA_seq_fasta blast_formatted_db source_db output
 		$query_n =~ s/^\>//;
 		print $seq_num."-th input query: ".$query_n;
 
-
 		my $result_tab = "";
 		
 		my @seqb = ($description, $seq_querys{$description});
@@ -742,7 +744,7 @@ Usage: perl $0 miRNA_seq_fasta blast_formatted_db source_db output
 		@sel_list_direction=();
 		
 		my $count = blast($seqb[0], $seqb[1], $tempb, $seq_type, $search_direction);
-		
+
 		my $i = 0;
 
 		foreach my $disc (@sel_list_disc) {

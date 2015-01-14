@@ -1,17 +1,14 @@
 #!/usr/bin/perl
 
 =head1
-
- 04-14-2012
- Change the style to my
-
- 04-13-2012 
- Add annotation of the program 
-
+ 01-14-2014: use strict and warnings, the fix several bugs
+ 11-10-2013: update mature miRNA to version 20, add function for search against hairpin sequence
+ 04-14-2012: Change the style for me
+ 04-13-2012: Add annotation of the program 
 =cut
 
-#use strict;
-#use warnings;
+use strict;
+use warnings;
 use FindBin;
 use IO::File;
 use File::Path;
@@ -174,7 +171,7 @@ $hairpin_fold= $fd."/".$output."_miRNA_hairpin_fold";	# hairpin fold using hairp
 $miRNA_temp = $fd."/".$output."_miRNA_temp";		# identified miRNA info
 $miRNA_seq  = $fd."/".$output."_miRNA_seq";		# identified miRNA seq
 
-$sRNA_sql  = $fd."/".$output."_sRNA_sql";		# small RNA sql info
+my $sRNA_sql  = $fd."/".$output."_sRNA_sql";		# small RNA sql info
 $sRNA_anno = $fd."/".$output."_sRNA_anno";              # small RNA annotation
                                                 		
 $miRNA_match = $fd."/".$output."_miRNA_match";		# miRNA align to mirBase using bowtie
@@ -211,7 +208,7 @@ my %seq; # key : small RNA ID; value: sequence
 compare2genome($sRNA_seq, $genome_seq, $genome_match);
 
 my %num_hit; # key: small RNA ID; value: number of hit for this small RNA
-%num_hit = filter_genome_match($genome_match, $match, 20);
+%num_hit = filter_genome_match($genome_match, $match, $max_multi_hit);
 
 #################################################################
 # kentnf: subroutine						#
@@ -271,7 +268,7 @@ sub filter_genome_match
 	}
 	$genomeB->close;
 
-	my $genomeB = IO::File->new("$genome_match") || die "can't open bowtie align file: $genome_match $!\n";
+	$genomeB = IO::File->new("$genome_match") || die "can't open bowtie align file: $genome_match $!\n";
 	my $match_fh = IO::File->new(">$match") || die "can't open filtered bowtie align file: $match $!\n";
 
 	my ($length, $sense, $start, $end);
@@ -299,6 +296,8 @@ sub filter_genome_match
 
 	return %num_hit;
 }
+#unlink($genome_match);
+
 
 #################################################################
 # retrieve genomic regions base sRNA aligned info		#
@@ -308,7 +307,7 @@ sub filter_genome_match
 #################################################################
 my $cmd_retrieve_genomic_regions = "$retrieve_genomic_regions_pl 200 $match $genome_seq $precursor";
 system ($cmd_retrieve_genomic_regions) && die "Error in command: $cmd_retrieve_genomic_regions\n";
-#unlink("output/$match");
+#unlink($match);
 
 #################################################################
 # fold the candidate precursor sequences using RNAfold program	#
@@ -351,6 +350,8 @@ sub parse_hairpin
 	my ($i, $mID) = (0, 0);
 
 	my ($hairpin_ID, $miR_ID, $start, $strand);
+
+	my %hairpin_sql;
 
 	while(<HAIRPIN>) 
 	{
@@ -410,7 +411,7 @@ sub parse_hairpin
 		if (/\(/) {
 			s/\(/#/g;
 			s/\)//g;
-			@a = split "#";
+			my @a = split "#";
 			print HAIRPIN_SQL "\t$a[@a-1]\n";
 		}
 	}
@@ -486,12 +487,11 @@ sub generate_sRNA_sql
 #################################################################
 # compare with mirBase using miRNA_seq				#
 #################################################################
-print "Compare to miRNA database...\n";
+print "Compare to miRNA database (mature) ...\n";
 my $cmd_mirBase = "$bowtie_program -v 2 -a --best --strata -f --norc $mirBase $miRNA_seq $miRNA_match"; 
 print $cmd_mirBase."\n";
 system($cmd_mirBase) && die "Error in command: $cmd_mirBase\n";
 print "Done\n";
-
 
 # mirBase sequence to hash
 my $miRNA_sequence;
@@ -502,7 +502,7 @@ close(MIRNA);
 
 my @miRNA_seq = split(">", $miRNA_sequence);
 
-for ($i = 0; $i < @miRNA_seq; $i++) {
+for (my $i = 0; $i < @miRNA_seq; $i++) {
 	$miRNA_seq[$i] =~ s/\n/#/;
 	my @b = split("#", $miRNA_seq[$i]);
 	chomp($b[1]);
@@ -515,6 +515,8 @@ Input : output/miRNA_match
 Output: output/miRNA_conserved_sql
 
 =cut
+my ($query_sequence, $hit_sequence, $start_pos, $end_pos, $start_position, $end_position, $to_end, $start_space, $end_space, $start, $end, $input_seq, $count_mismatch);
+
 open(MIRNA_MATCH, $miRNA_match)  || die "can't open miRNA match to mirBase file $miRNA_match $!\n";
 open(MIR_conserve, ">$miRNA_conserved_sql")  || die "can't open $miRNA_conserved_sql $!\n";
 while(<MIRNA_MATCH>) 
@@ -534,7 +536,7 @@ while(<MIRNA_MATCH>)
 		$start = "-" x $start_pos;
 		$end = "-" x $to_end;
 		$input_seq = $start . $query_sequence . $end;
-		for ($k = $start_pos; $k <= $end_pos; $k++) {
+		for (my $k = $start_pos; $k <= $end_pos; $k++) {
 			if (substr($input_seq, $k, 1) eq substr($hit_sequence, $k, 1)) { $align .= "|"; }
 			else { $align .= "x"; }
 		}
@@ -545,8 +547,17 @@ while(<MIRNA_MATCH>)
 }
 close(MIRNA_MATCH);
 close(MIR_conserve);
-#unlink("output/$miRNA_match");
+#unlink("$miRNA_match");
 
+#################################################################
+# compare hairpin sequence with haipin in mirBase               #
+#################################################################
+
+#print "Compare to miRNA database (hairpin) ....\n";
+#my $cmd_hairpin "$bowtie_program -v 2 -a --best --strata -f --norc $mirBase_hairpin $haipin_seq $haipin_match";
+#print $cmd_hairpin."\n";
+# system($cmd_hairpin) && die "Error in command: $cmd_hairpin\n";
+#print "Done\n";
 
 =head1 miRNA_sql.pl
 

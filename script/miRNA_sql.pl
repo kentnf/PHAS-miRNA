@@ -22,8 +22,9 @@ $input3 = $ARGV[2];
 $nomatch= $ARGV[3];
 $output = $ARGV[4];
 
-open(IN3, $input3) || die "can't open miRNA_temp file $ARGV[2] $!\n";
 
+# load miRNA mapping info to hash
+open(IN3, $input3) || die "can't open miRNA_temp file $ARGV[2] $!\n";
 while(<IN3>) {
 	chomp;
 	@a = split "\t";
@@ -31,9 +32,10 @@ while(<IN3>) {
 }
 close(IN3);
 
+# using mapping info to create nomatch information
+# load the miRNA_conserved_sql to map hash
 open(IN1, $input1) || die "can't open miRNA_conserved_sql $ARGV[0] $!\n";
 open(NO, ">$nomatch");
-
 while(<IN1>) {
 	chomp;;
 	@a = split "\t";
@@ -48,8 +50,9 @@ while(<IN1>) {
 close(IN1);
 close(NO);
 
+# output information
 open(IN2, $input2) || die "can't open $ARGV[1] $!\n";
-open(OUT, ">$output") || die "can't open $ARGV[3] $!\n";
+open(OUT, ">$output") || die "can't open $ARGV[4] $!\n";
 
 while(<IN2>) {
 	chomp;

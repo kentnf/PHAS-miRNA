@@ -54,7 +54,7 @@ $gap = 2;    # distance from end position of hairpin
 #################################################################
 
 
-my $star_candidate = "Star_candidate";
+my $star_candidate = $TEMP_PATH."/"."Star_candidate.";
 
 my $temp_fas = $TEMP_PATH."/"."bowtie.tmp.fas.";
 my $temp_db = $TEMP_PATH."/"."bowtie.tmp.db.";
@@ -66,6 +66,7 @@ my ($second, $minute, $hour);
 $fid = $second.$minute.$hour;
 $temp_fas .= $fid; 
 $temp_db .= $fid;
+$star_candidate .= $fid;
 
 #################################################################
 # constructure temp hairpin sequence file 			#
@@ -282,13 +283,20 @@ sub load_read_number
 	my %sRNA_freq;
 
 	my $fh = IO::File->new($sRNA_expr) || die "Can not open small RNA expr file $sRNA_expr $!\n";
+	# get title information
+	my $title = <$fh>; chomp($title);
+	my @t = split(/\t/, $title);
+	shift @t; shift @t;
+	$sRNA_freq{'title'} = join("\t", @t);
+
 	while(<$fh>)
 	{
 		chomp;
   		my $line = $_;
   		my @a = split("\t", $line);
-  		my $s_id = $a[0];
+  		my $s_id = $a[1];
   		shift @a;
+		shift @a;
   		$sRNA_freq{$s_id} = join("\t", @a);
 	}
 	$fh->close;
@@ -304,11 +312,11 @@ print "Checking miRNA star....\n";
 open(IN, $star_candidate) || die "can't open $star_candidate $!\n";
 open(OUT, ">$output") || die "can't open $output $!\n";
 
-my @exp = split(/\t/,$sRNA_freq{'sRNA'});
+my @exp = split(/\t/, $sRNA_freq{'title'});
 my $exp_title = '';
 foreach my $sample (@exp) { $exp_title.="\t$sample:A\t$sample:B\t$sample:ratio"; }
 
-print OUT "miR_id\tsRNA_a\tsRNA_b\tmiR_s\tmiR_l\tsRNA_s\tsRNA_e$exp_title\n";
+print OUT "miR_id\tsRNA_a\tsRNA_b\tmiR_start\tmiR_len\tsRNA_start\tsRNA_end$exp_title\n";
 
 while(<IN>)
 {
@@ -384,3 +392,4 @@ while(<IN>)
 close(IN);
 close(OUT);
 
+unlink($star_candidate);
